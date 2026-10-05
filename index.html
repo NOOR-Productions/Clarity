@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clarity — a high-contrast reading space</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;600&family=Source+Sans+3:wght@400;600&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Literata:opsz,wght@14..72,400;14..72,600&family=EB+Garamond:wght@400;600&family=Playfair+Display:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=Roboto+Mono:wght@400;600&family=Caveat:wght@500;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+</head>
+<body>
+
+<canvas id="bgCanvas" aria-hidden="true"></canvas>
+
+<header>
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <h1>Clarity</h1>
+    <span class="tag">paste it, read it properly</span>
+  </div>
+
+  <div class="header-right">
+    <div class="modes" role="group" aria-label="Display mode">
+      <button class="mode-btn active" id="btnDark" onclick="setMode('dark')">Dark</button>
+      <button class="mode-btn" id="btnBright" onclick="setMode('bright')">Bright</button>
+      <button class="mode-btn" id="btnEye" onclick="setMode('eye')">Eye Care</button>
+    </div>
+
+    <div class="contrast-badge" title="WCAG contrast ratio of body text against the background">
+      <span class="contrast-dot" id="contrastDot"></span>
+      <span id="contrastText">Contrast —</span>
+    </div>
+
+    <button class="btn" id="installBtn" style="display:none;" onclick="installClarity()">Install Clarity</button>
+    <button class="icon-btn" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" onclick="toggleShortcuts()">?</button>
+  </div>
+</header>
+
+<main>
+  <div class="editor-col">
+    <div class="editor-toolbar">
+      <input class="doc-title-input" id="docTitle" placeholder="Untitled" oninput="onTitleEdited()">
+      <div class="toggle-pair" role="group" aria-label="Edit or preview">
+        <button id="btnEdit" class="active" onclick="setViewMode('edit')">Edit</button>
+        <button id="btnPreview" onclick="setViewMode('preview')">Preview</button>
+      </div>
+    </div>
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="Paste your content here — plain text or Markdown. No blurry formatting carried over." oninput="onEditorInput()"></textarea>
+      <div id="preview" tabindex="0"></div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="control-group">
+      <h2>Saved</h2>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn" onclick="newDoc()">New</button>
+        <button class="btn primary" onclick="saveDoc()">Save</button>
+      </div>
+      <div class="doc-list" id="docList">
+        <div class="empty-note">Nothing saved yet.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="control-group">
+      <h2>Type</h2>
+      <div class="slider-row">
+        <div class="slider-label"><span>Font family</span></div>
+        <select id="fontFamily" onchange="updateFontFamily()">
+          <option value="sans">System Sans</option>
+          <option value="hyperlegible">Atkinson Hyperlegible (easy-read)</option>
+          <option value="inter">Inter</option>
+          <option value="sourceSans">Source Sans</option>
+          <option value="serif">System Serif</option>
+          <option value="lora">Lora</option>
+          <option value="merriweather">Merriweather</option>
+          <option value="literata">Literata</option>
+          <option value="garamond">EB Garamond</option>
+          <option value="playfair">Playfair Display</option>
+          <option value="mono">IBM Plex Mono</option>
+          <option value="robotoMono">Roboto Mono</option>
+          <option value="caveat">Caveat (handwriting)</option>
+          <option value="comicNeue">Comic Neue</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Font size</span><span class="val" id="fontSizeVal">19px</span></div>
+        <input type="range" id="fontSize" min="14" max="32" value="19" oninput="updateType()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Line spacing</span><span class="val" id="lineHeightVal">1.65</span></div>
+        <input type="range" id="lineHeight" min="130" max="220" value="165" oninput="updateType()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Line width</span><span class="val" id="measureVal">68ch</span></div>
+        <input type="range" id="measure" min="45" max="95" value="68" oninput="updateType()">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="control-group" id="eyeControls" style="display:none;">
+      <h2>Eye Care tuning</h2>
+      <div class="slider-row">
+        <div class="slider-label"><span>Brightness</span><span class="val" id="eyeBrightVal">32%</span></div>
+        <input type="range" id="eyeBright" min="8" max="60" value="32" oninput="updateEyeMode()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Warmth</span><span class="val" id="eyeWarmVal">40°</span></div>
+        <input type="range" id="eyeWarm" min="20" max="55" value="40" oninput="updateEyeMode()">
+      </div>
+      <div class="meta">Lower brightness and higher warmth cut blue light for night reading — the badge above warns you if it drops below safe contrast.</div>
+    </div>
+    <hr class="divider" id="eyeDivider" style="display:none;">
+
+    <div class="control-group">
+      <h2>Background <span style="text-transform:none;font-weight:400;">— for <span id="bgModeLabel">Dark</span></span></h2>
+      <div class="swatch-grid" id="swatchGrid">
+        <div id="swatchContainer" style="display:contents;"></div>
+      </div>
+      <div class="meta" style="margin-top:8px;">Each mode remembers its own background. Particles stay behind the text card and never touch its contrast.</div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="control-group">
+      <h2>Listen</h2>
+      <div class="slider-row">
+        <div class="slider-label"><span>Language</span></div>
+        <select id="languageSelect" onchange="onLanguageChange()">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+      <div style="margin-top:6px;">
+        <a href="#" id="advancedVoiceToggle" class="meta" style="text-decoration:underline;cursor:pointer;" onclick="toggleAdvancedVoice(event)">Advanced: pick a specific voice</a>
+      </div>
+      <div id="advancedVoiceBox" style="display:none;margin-top:6px;">
+        <div class="meta" style="color:var(--warn,#d99);">Don't change this unless you're sure -- picking a specific voice can mismatch your text's language and sound wrong.</div>
+        <div class="slider-row" style="margin-top:4px;">
+          <div class="slider-label"><span>Voice</span></div>
+          <select id="voiceSelect" onchange="onVoiceChange()">
+            <option value="">Loading voices…</option>
+          </select>
+        </div>
+        <div class="meta" id="voiceMismatchWarning" style="margin-top:4px;color:var(--warn,#d99);display:none;"></div>
+        <button class="btn" style="margin-top:6px;" onclick="undoAdvancedVoiceChoice()">Undo my choice</button>
+      </div>
+      <div class="meta" id="voiceStatus" style="margin-top:4px;color:var(--warn,#d99);"></div>
+      <div id="voicePackActions" style="margin-top:4px;"></div>
+      <audio id="kokoroAudio" style="display:none;"></audio>
+      <div class="slider-row">
+        <div class="slider-label"><span>Speed</span><span class="val" id="rateVal">1.0x</span></div>
+        <input type="range" id="rateRange" min="60" max="160" value="100" oninput="onRateChange()">
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="btnPlayPause" onclick="toggleReading()">▶ Play</button>
+        <button class="btn" onclick="stopReading()">Stop</button>
+      </div>
+      <div class="meta" id="readerStatus" style="margin-top:6px;">Reads the current document aloud.</div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="control-group">
+      <h2>File</h2>
+      <div class="btn-row">
+        <button class="btn" onclick="downloadText()">.txt</button>
+        <button class="btn" onclick="downloadMarkdown()">.md</button>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn primary" onclick="exportPDF()">PDF</button>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn" onclick="copyText()">Copy</button>
+        <button class="btn" onclick="clearText()">Clear</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="meta" id="wordCount">0 words · 0 characters</div>
+    <div class="meta" id="saveStatus" style="color:var(--muted)">Draft auto-saves as you type.</div>
+  </aside>
+</main>
+
+<div id="printArea"></div>
+
+<div class="modal-overlay" id="shortcutsModal">
+  <div class="modal-box">
+    <h3>Keyboard shortcuts</h3>
+    <div class="shortcut-row"><span>Save document</span><kbd>Ctrl ⌘ S</kbd></div>
+    <div class="shortcut-row"><span>New document</span><kbd>Ctrl ⌘ N</kbd></div>
+    <div class="shortcut-row"><span>Export PDF</span><kbd>Ctrl ⌘ P</kbd></div>
+    <div class="shortcut-row"><span>Download .txt</span><kbd>Ctrl ⌘ Shift D</kbd></div>
+    <div class="shortcut-row"><span>Download .md</span><kbd>Ctrl ⌘ Shift M</kbd></div>
+    <div class="shortcut-row"><span>Toggle Edit / Preview</span><kbd>Ctrl ⌘ E</kbd></div>
+    <div class="shortcut-row"><span>Play / pause reading</span><kbd>Ctrl ⌘ Shift L</kbd></div>
+    <div class="shortcut-row"><span>Dark / Bright / Eye Care</span><kbd>Ctrl ⌘ 1, 2 or 3</kbd></div>
+    <div class="shortcut-row"><span>This menu</span><kbd>?</kbd></div>
+    <button class="btn modal-close" onclick="toggleShortcuts(false)">Close</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => {
+        console.warn('Clarity: service worker registration failed', err);
+      });
+    });
+  }
+
+  // Install prompt. The browser only fires 'beforeinstallprompt' when its
+  // own install criteria are met (served over HTTPS, has a valid manifest,
+  // has a registered service worker, etc.) -- so the button stays hidden
+  // until the browser itself says installing is actually possible. This
+  // never fires at all on iOS Safari, which has no install-prompt API; on
+  // iOS, "Add to Home Screen" from the Share sheet is the only path, and
+  // there's no page-side way to trigger or detect that.
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const btn = document.getElementById('installBtn');
+    if(btn) btn.style.display = '';
+  });
+  function installClarity(){
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.finally(() => {
+      deferredInstallPrompt = null;
+      const btn = document.getElementById('installBtn');
+      if(btn) btn.style.display = 'none';
+    });
+  }
+  window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('installBtn');
+    if(btn) btn.style.display = 'none';
+  });
+</script>
+
+</body>
+</html>
