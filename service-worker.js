@@ -2,7 +2,7 @@
 // loads instantly on repeat visits. Bump CACHE_NAME whenever any of the
 // cached files change, so old clients pick up the new version instead of
 // being stuck on a stale cache forever.
-const CACHE_NAME = 'clarity-shell-v1';
+const CACHE_NAME = 'clarity-shell-v2';
 
 // The app shell: everything needed for Clarity to load and run with no
 // network connection. Google Fonts are intentionally NOT cached here --

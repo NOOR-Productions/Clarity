@@ -197,6 +197,13 @@
 
 <div id="printArea"></div>
 
+<div class="install-banner" id="installBanner" role="dialog" aria-labelledby="installTitle" aria-live="polite" hidden>
+  <div class="install-title" id="installTitle"></div>
+  <div class="install-text" id="installText"></div>
+  <ol class="install-steps" id="installSteps" hidden></ol>
+  <div class="btn-row" id="installActions"></div>
+</div>
+
 <div class="modal-overlay" id="shortcutsModal">
   <div class="modal-box">
     <h3>Keyboard shortcuts</h3>
@@ -230,12 +237,84 @@
   // never fires at all on iOS Safari, which has no install-prompt API; on
   // iOS, "Add to Home Screen" from the Share sheet is the only path, and
   // there's no page-side way to trigger or detect that.
+  //
+  // Landing page flow: the landing page's "Download Clarity" button opens
+  // this page with ?install=1. A browser only allows prompt() after a tap on
+  // THIS page, so we can't start the install on arrival. Instead we detect
+  // what the device can do and show one clear banner, so installing takes a
+  // single tap (or, on iPhone/iPad, three short steps -- Apple offers no
+  // other way).
   let deferredInstallPrompt = null;
+  const isStandalone = () =>
+    (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const isApple = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const wantsInstall = new URLSearchParams(location.search).get('install') === '1';
+  let installFlowActive = wantsInstall && !isStandalone();
+  let installTimer = null;
+
+  if(wantsInstall){
+    // Tidy the address bar so a refresh doesn't replay the flow
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch(e){}
+  }
+
+  function showInstallBanner(state){
+    const box = document.getElementById('installBanner');
+    const title = document.getElementById('installTitle');
+    const text = document.getElementById('installText');
+    const steps = document.getElementById('installSteps');
+    const actions = document.getElementById('installActions');
+    if(!box) return;
+    steps.hidden = true; steps.innerHTML = ''; actions.innerHTML = '';
+    const addBtn = (label, primary, onClick) => {
+      const b = document.createElement('button');
+      b.className = 'btn' + (primary ? ' primary' : '');
+      b.textContent = label;
+      b.onclick = onClick;
+      actions.appendChild(b);
+      return b;
+    };
+    let focusBtn = null;
+    if(state === 'checking'){
+      title.textContent = 'Getting Clarity ready to install';
+      text.textContent = 'Checking what your device can do…';
+    } else if(state === 'ready'){
+      title.textContent = 'Install Clarity';
+      text.textContent = 'Add Clarity to your device. It opens like any other app and keeps working without internet.';
+      focusBtn = addBtn('Install Clarity', true, installClarity);
+      addBtn('Not now', false, hideInstallBanner);
+    } else if(state === 'apple'){
+      title.textContent = 'Add Clarity to your Home Screen';
+      text.textContent = 'Apple has no install button for websites, so it takes three taps in Safari:';
+      ['Tap the Share button, the square with an arrow.',
+       'Scroll down and tap Add to Home Screen.',
+       'Tap Add.'].forEach(t => { const li = document.createElement('li'); li.textContent = t; steps.appendChild(li); });
+      steps.hidden = false;
+      focusBtn = addBtn('Got it', true, hideInstallBanner);
+    } else if(state === 'unsupported'){
+      title.textContent = 'This browser can\'t install Clarity';
+      text.textContent = 'Open this page in Chrome or Edge to install it. If Clarity is already installed, open it from your apps instead.';
+      focusBtn = addBtn('OK', true, hideInstallBanner);
+    } else if(state === 'installed'){
+      title.textContent = 'Clarity is installed';
+      text.textContent = 'Open it from your apps or Home Screen.';
+      focusBtn = addBtn('OK', true, hideInstallBanner);
+    }
+    box.hidden = false;
+    if(focusBtn) focusBtn.focus();
+  }
+  function hideInstallBanner(){
+    const box = document.getElementById('installBanner');
+    if(box) box.hidden = true;
+    installFlowActive = false;
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
     const btn = document.getElementById('installBtn');
     if(btn) btn.style.display = '';
+    if(installFlowActive){ clearTimeout(installTimer); showInstallBanner('ready'); }
   });
   function installClarity(){
     if(!deferredInstallPrompt) return;
@@ -244,12 +323,26 @@
       deferredInstallPrompt = null;
       const btn = document.getElementById('installBtn');
       if(btn) btn.style.display = 'none';
+      const box = document.getElementById('installBanner');
+      if(box && !box.hidden) box.hidden = true;
     });
   }
   window.addEventListener('appinstalled', () => {
     const btn = document.getElementById('installBtn');
     if(btn) btn.style.display = 'none';
+    if(installFlowActive) showInstallBanner('installed');
   });
+
+  if(installFlowActive){
+    if(isApple){
+      showInstallBanner('apple');
+    } else {
+      showInstallBanner('checking');
+      // Chrome and Edge announce install support within a moment of loading;
+      // if nothing arrives, this browser can't install (or it's installed already).
+      installTimer = setTimeout(() => { if(installFlowActive && !deferredInstallPrompt) showInstallBanner('unsupported'); }, 6000);
+    }
+  }
 </script>
 
 </body>
